@@ -1,0 +1,11 @@
+{
+  "action": "update",
+  "dbName": "mydb",
+  "table": "users",
+  "data": {
+    "email": "test",
+    "firstname": "test",
+    "id": "cmcq62kwz00005gss67sozh6q",
+    "test_id": "cmcq5vrum0000wqssegs680uv"
+  }
+}

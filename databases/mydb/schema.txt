@@ -3,3 +3,7 @@
 id:int:pk,unique
 firstname:string
 email:string:unique
+test_id:int
+
+[test]
+id:int:pk,unique

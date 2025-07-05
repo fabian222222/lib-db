@@ -71,6 +71,17 @@ func InsertData(databaseName, tableName string, rawInputs ...map[string]string) 
 				val, _ = reader.ReadString('\n')
 				val = strings.TrimSpace(val)
 			}
+			if strings.HasSuffix(field, "_id") && val != "" {
+				relatedTable := strings.TrimSuffix(field, "_id")
+				relatedTablePath := filepath.Join(databaseName, "data", relatedTable)
+				if !fs.DoesDirExist(relatedTablePath) {
+					return fmt.Errorf("la table liée \"%s\" n'existe pas pour la clé étrangère \"%s\"", relatedTable, field)
+				}
+
+				if !fs.DoesFileExist(filepath.Join("./../../databases", databaseName, "data", relatedTable, val+".json")) {
+					return fmt.Errorf("la valeur \"%s\" pour \"%s\" n'existe pas dans la table \"%s\"", val, field, relatedTable)
+				}
+			}
 			entry[field] = val
 		}
 
@@ -152,16 +163,31 @@ func UpdateData(databaseName, tableName, targetID string, updates map[string]str
 		if field == "id" {
 			continue
 		}
-		if val, ok := updates[field]; ok {
-			entry[field] = val
-		} else {
+
+		val, ok := updates[field]
+		if !ok {
 			fmt.Printf("Nouvelle valeur pour \"%s\" (laissez vide pour conserver \"%s\") : ", field, entry[field])
 			input, _ := reader.ReadString('\n')
-			input = strings.TrimSpace(input)
-			if input != "" {
-				entry[field] = input
+			val = strings.TrimSpace(input)
+		}
+
+		if val == "" {
+			continue
+		}
+
+		if strings.HasSuffix(field, "_id") {
+			relatedTable := strings.TrimSuffix(field, "_id")
+			relatedTablePath := filepath.Join(databaseName, "data", relatedTable)
+
+			if !fs.DoesDirExist(relatedTablePath) {
+				return fmt.Errorf("La table liée \"%s\" n'existe pas pour la clé étrangère \"%s\"", relatedTable, field)
+			}
+
+			if !fs.DoesFileExist(filepath.Join("./../../databases", databaseName, "data", relatedTable, val+".json")) {
+				return fmt.Errorf("la valeur \"%s\" pour \"%s\" n'existe pas dans la table \"%s\"", val, field, relatedTable)
 			}
 		}
+		entry[field] = val
 	}
 
 	updatedJSON, err := json.MarshalIndent(entry, "", "  ")

@@ -45,7 +45,7 @@ func AddField(databaseName, tableName, fieldName, fieldType string, showLogs boo
 		fieldType, _ = reader.ReadString('\n')
 		fieldType = strings.TrimSpace(fieldType)
 	}
-	if len(options) == 0 {
+	if len(options) == 0 && showLogs {
 		fmt.Print("Options du champ (séparées par des virgules, ex: pk,unique ou fk=table.id) : ")
 		optLine, _ := reader.ReadString('\n')
 		optLine = strings.TrimSpace(optLine)
@@ -113,7 +113,7 @@ func AddField(databaseName, tableName, fieldName, fieldType string, showLogs boo
 			continue
 		}
 		if inTable && (line == "" || strings.HasPrefix(strings.TrimSpace(line), "[")) {
-			finalLines = append(finalLines[:len(finalLines)-1], fieldDefinition, line) // insérer avant prochaine table
+			finalLines = append(finalLines[:len(finalLines)-1], fieldDefinition, line) 
 			inTable = false
 		}
 	}
