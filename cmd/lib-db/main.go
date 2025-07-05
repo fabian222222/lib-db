@@ -25,6 +25,8 @@ func main() {
 		handleTable(os.Args[2:])
 	case "field":
 		handleField(os.Args[2:])
+	case "data":
+		handleData(os.Args[2:])
 	default:
 		fmt.Printf("Commande inconnue : %s\n", os.Args[1])
 	}
