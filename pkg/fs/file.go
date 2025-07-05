@@ -43,6 +43,26 @@ func GetTableFilePath(database string) string {
 	return filepath.Join("./../../databases", database, "tables.txt")
 }
 
+func GetDataFilePath(database string, tableName string) string {
+	return filepath.Join("./../../databases", database, "data", tableName)
+}
+
+func GetDataFile(database string, tableName string, id string) string {
+	return filepath.Join("./../../databases", database, "data", tableName, id + ".json")
+}
+
+func GetCacheFilePath(database string) string {
+	return filepath.Join("./../../databases", database, "cache.txt")
+}
+
+func GetPendingFilePath(database string) string {
+	return filepath.Join("./../../databases", database, "pending.txt")
+}
+
+func DoesDataFileExist(database string, tableName string, id string) bool {
+	return DoesFileExist(GetDataFile(database, tableName, id))
+}
+
 func ReadLines(path string) ([]string, error) {
 	file, err := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {

@@ -36,7 +36,7 @@ func CreateDatabase(name string) {
 
     fmt.Println("Database", name, "created at", dbPath)
 	fs.CreateFile(name, "schema.txt")
-	fs.CreateFile(name, "data.txt")
+	fs.CreateDir(name, "data")
 	fs.CreateFile(name, "cache.txt")
 	fs.CreateFile(name, "pending.txt")
 	return

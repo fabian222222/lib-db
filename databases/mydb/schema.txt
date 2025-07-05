@@ -1,8 +1,5 @@
 
 [users]
-id:string:pk,unique
+id:int:pk,unique
 firstname:string
-
-[categories]
-id:string:pk,unique
-name:string:unique
+email:string:unique

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"github.com/fabian222222/lib-db/pkg/fs"
 	"bufio"
+	"path/filepath"
 )
 
 func AddTable(database, tableName string) error {
@@ -42,6 +43,7 @@ func AddTable(database, tableName string) error {
 	}
 
 	AddField(database, tableName, "id", "int", true, "pk", "unique")
+	fs.CreateDir(database, "data/" + tableName)
 	fmt.Printf("la table \"%s\" a été créée", tableName)
 	return nil
 }
@@ -96,6 +98,11 @@ func UpdateTableName(database, oldTableName, newTableName string) error {
 		}
 	}
 
+	oldPath := filepath.Join("./../../databases", database, oldTableName)
+	newPath := filepath.Join("./../../databases", database, newTableName)
+
+	os.Rename(oldPath, newPath)
+
 	return fs.WriteLines(path, newLines)
 }
 
@@ -149,6 +156,10 @@ func RemoveTable(database, tableName string) error {
 		fmt.Printf("erreur lors de la suppression de la table \"%s\"", tableName)
 		return err
 	}
+
+	if err := os.RemoveAll(fs.GetDataFilePath(database, tableName)); err != nil {
+		return fmt.Errorf("échec de la suppression du dossier \"%s\": %w", path, err)
+	} 
 	fmt.Printf("la table \"%s\" a été supprimée", tableName)
 	return nil
 }
