@@ -1,28 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 	"github.com/fabian222222/lib-db/pkg/database"
 )
-
-type DatabaseStats struct {
-	Name         string    `json:"name"`
-	Size         int64     `json:"size_bytes"`
-	TableCount   int       `json:"table_count"`
-	LastModified time.Time `json:"last_modified"`
-}
-
-type PerformanceStats struct {
-	TotalDatabases    int             `json:"total_databases"`
-	TotalSizeBytes    int64           `json:"total_size_bytes"`
-	DatabaseStats     []DatabaseStats `json:"database_stats"`
-	GeneratedAt       time.Time       `json:"generated_at"`
-	ActiveConnections int             `json:"active_connections"`
-}
 
 func handleStats(args []string) {
 	ok, session, err := database.IsAuthenticated()
@@ -64,7 +48,7 @@ func showGeneralStats(username string) {
 	isAdmin := (username == "admin")
 	
 	if isAdmin {
-		stats, err := generatePerformanceStats()
+		stats, err := database.GeneratePerformanceStats()
 		if err != nil {
 			fmt.Println("Erreur lors de la génération des statistiques :", err)
 			return
@@ -87,7 +71,7 @@ func showGeneralStats(username string) {
 				dbStat.LastModified.Format("02/01 15:04"))
 		}
 	} else {
-		userStats, err := generateUserPerformanceStats(username)
+		userStats, err := database.GenerateUserPerformanceStats(username)
 		if err != nil {
 			fmt.Println("Erreur lors de la génération des statistiques :", err)
 			return
@@ -131,7 +115,7 @@ func showDatabaseStats(dbName, username string) {
 		return
 	}
 
-	dbStats, err := generateDatabaseStats(dbName)
+	dbStats, err := database.GenerateDatabaseStats(dbName)
 	if err != nil {
 		fmt.Println("Erreur :", err)
 		return
@@ -209,53 +193,9 @@ func showPerformanceReport(username string) {
 }
 
 func exportStats(username string) {
-	var stats *PerformanceStats
-	var err error
-	
-	if username == "admin" {
-		stats, err = generatePerformanceStats()
-		if err != nil {
-			fmt.Println("Erreur :", err)
-			return
-		}
-	} else {
-		stats, err = generateUserPerformanceStats(username)
-		if err != nil {
-			fmt.Println("Erreur :", err)
-			return
-		}
-	}
-
-	statsDir := "../../stats"
-	if _, err := os.Stat(statsDir); os.IsNotExist(err) {
-		err = os.MkdirAll(statsDir, 0755)
-		if err != nil {
-			fmt.Println("Erreur lors de la création du dossier stats :", err)
-			return
-		}
-	}
-	
-	userStatsDir := filepath.Join(statsDir, username)
-	if _, err := os.Stat(userStatsDir); os.IsNotExist(err) {
-		err = os.MkdirAll(userStatsDir, 0755)
-		if err != nil {
-			fmt.Println("Erreur lors de la création du dossier utilisateur :", err)
-			return
-		}
-	}
-
-	fileName := fmt.Sprintf("stats_export_%s.json", time.Now().Format("20060102_150405"))
-	filePath := filepath.Join(userStatsDir, fileName)
-	
-	data, err := json.MarshalIndent(stats, "", "  ")
+	filePath, err := database.ExportStats(username, "../../stats")
 	if err != nil {
-		fmt.Println("Erreur lors de la sérialisation :", err)
-		return
-	}
-
-	err = os.WriteFile(filePath, data, 0644)
-	if err != nil {
-		fmt.Println("Erreur lors de l'écriture :", err)
+		fmt.Println("Erreur :", err)
 		return
 	}
 
@@ -266,158 +206,12 @@ func exportStats(username string) {
 	}
 }
 
-func generatePerformanceStats() (*PerformanceStats, error) {
-	dbPath := "../../databases"
-	files, err := os.ReadDir(dbPath)
-	if err != nil {
-		return nil, err
-	}
 
-	stats := &PerformanceStats{
-		GeneratedAt:       time.Now(),
-		DatabaseStats:     []DatabaseStats{},
-	}
-
-	for _, file := range files {
-		if file.Name() == ".session" {
-			continue
-		}
-
-		dbStats, err := generateDatabaseStats(file.Name())
-		if err != nil {
-			continue
-		}
-
-		stats.DatabaseStats = append(stats.DatabaseStats, *dbStats)
-		stats.TotalSizeBytes += dbStats.Size
-		stats.TotalDatabases++
-	}
-
-	return stats, nil
-}
-
-func generateUserPerformanceStats(username string) (*PerformanceStats, error) {
-	dbPath := "../../databases"
-	files, err := os.ReadDir(dbPath)
-	if err != nil {
-		return nil, err
-	}
-
-	stats := &PerformanceStats{
-		GeneratedAt:       time.Now(),
-		DatabaseStats:     []DatabaseStats{},
-	}
-
-	for _, file := range files {
-		if file.Name() == ".session" {
-			continue
-		}
-
-		if !database.UserHasAccess(username, file.Name()) {
-			continue
-		}
-
-		dbStats, err := generateDatabaseStats(file.Name())
-		if err != nil {
-			continue
-		}
-
-		stats.DatabaseStats = append(stats.DatabaseStats, *dbStats)
-		stats.TotalSizeBytes += dbStats.Size
-		stats.TotalDatabases++
-	}
-
-	return stats, nil
-}
-
-func generateDatabaseStats(dbName string) (*DatabaseStats, error) {
-	dbPath := filepath.Join("../../databases", dbName)
-	
-	var totalSize int64
-	var lastModified time.Time
-	tableCount := 0
-
-	err := filepath.Walk(dbPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		
-		if !info.IsDir() {
-			totalSize += info.Size()
-			if info.ModTime().After(lastModified) {
-				lastModified = info.ModTime()
-			}
-		}
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	dataPath := filepath.Join(dbPath, "data")
-	if dataFiles, err := os.ReadDir(dataPath); err == nil {
-		tableCount = len(dataFiles)
-	}
-
-	return &DatabaseStats{
-		Name:         dbName,
-		Size:         totalSize,
-		TableCount:   tableCount,
-		LastModified: lastModified,
-	}, nil
-}
 
 func exportDatabaseStats(dbName, username string) {
-	if username != "admin" && !database.UserHasAccess(username, dbName) {
-		fmt.Printf("❌ Vous n'avez pas accès à la base de données '%s'\n", dbName)
-		fmt.Println("💡 Seuls les propriétaires peuvent exporter les statistiques détaillées.")
-		return
-	}
-
-	dbPath := filepath.Join("../../databases", dbName)
-	
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		fmt.Printf("❌ La base de données '%s' n'existe pas\n", dbName)
-		return
-	}
-
-	dbStats, err := generateDatabaseStats(dbName)
+	filePath, err := database.ExportDatabaseStats(dbName, username, "../../stats")
 	if err != nil {
-		fmt.Println("Erreur :", err)
-		return
-	}
-
-	statsDir := "../../stats"
-	if _, err := os.Stat(statsDir); os.IsNotExist(err) {
-		err = os.MkdirAll(statsDir, 0755)
-		if err != nil {
-			fmt.Println("Erreur lors de la création du dossier stats :", err)
-			return
-		}
-	}
-	
-	dbStatsDir := filepath.Join(statsDir, dbName)
-	if _, err := os.Stat(dbStatsDir); os.IsNotExist(err) {
-		err = os.MkdirAll(dbStatsDir, 0755)
-		if err != nil {
-			fmt.Println("Erreur lors de la création du dossier pour la base :", err)
-			return
-		}
-	}
-
-	fileName := fmt.Sprintf("stats_%s_%s.json", dbName, time.Now().Format("20060102_150405"))
-	filePath := filepath.Join(dbStatsDir, fileName)
-	
-	data, err := json.MarshalIndent(dbStats, "", "  ")
-	if err != nil {
-		fmt.Println("Erreur lors de la sérialisation :", err)
-		return
-	}
-
-	err = os.WriteFile(filePath, data, 0644)
-	if err != nil {
-		fmt.Println("Erreur lors de l'écriture :", err)
+		fmt.Printf("❌ %s\n", err.Error())
 		return
 	}
 
