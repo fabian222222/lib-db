@@ -3,3 +3,7 @@
 databases/.session
 
 databases/
+
+/backup
+
+/stats

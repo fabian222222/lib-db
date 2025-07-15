@@ -10,7 +10,7 @@ import(
 )
 
 func CreateDatabase(name string) {
-	ok, _, err := IsAuthenticated()
+	ok, session, err := IsAuthenticated()
 	if err != nil {
 		fmt.Println("Erreur lors de la vérification de la session :", err)
 		return
@@ -39,6 +39,13 @@ func CreateDatabase(name string) {
 	fs.CreateDir(name, "data")
 	fs.CreateFile(name, "cache.txt")
 	fs.CreateFile(name, "pending.txt")
+	
+	err = GrantDatabaseAccess(session.Username, name)
+	if err != nil {
+		fmt.Printf("⚠️  Base créée mais erreur lors de l'attribution des droits : %v\n", err)
+	} else {
+		fmt.Printf("✅ Vous êtes maintenant propriétaire de la base '%s'\n", name)
+	}
 	return
 }
 
